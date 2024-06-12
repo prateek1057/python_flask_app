@@ -102,8 +102,6 @@ def get_misspelled_words(html_code):
    
     return all_words_count, correct_words_count, misspelled_word_with_correct_word
  
- 
- 
 def get_image_src_links(html_code):
     src_links = []
  
@@ -119,19 +117,6 @@ def get_image_src_links(html_code):
  
     return src_links
  
-def validate_html_w3c(html):
-    '''Parse HTML with html5lib and log all errors and warnings.'''
-    errors = []
-    warnings = []
-   
-    parser = HTMLParser(strict=True, tree=html5lib.treebuilders.getTreeBuilder("etree"))
-    try:
-        parsed_tree = parser.parse(StringIO(html))
-    except ParseError as e:
-        if "Specific Error Message" not in str(e):  # Skip specific error
-            errors.append(str(e))
- 
-    return errors, warnings
  
 def get_image_src_links(html_code):
     src_links = []
@@ -176,28 +161,7 @@ def is_blurry(image_url, threshold=100):
     except requests.exceptions.RequestException:
         return False
  
-   
-def validate_html(html):
-    soup = BeautifulSoup(html, 'html5lib')
-    errors = []
- 
-    # Check for missing alt attributes in img tags
-    for img in soup.find_all('img'):
-        if not img.get('alt'):
-            errors.append({
-                'error': 'Missing alt attribute',
-                'element': str(img),
-                'message': 'All img tags must have an alt attribute for accessibility.'
-            })
- 
-    # Add more validation checks as needed
-    # For example, check for missing title in head, etc.
- 
-    return errors
- 
- 
- 
- 
+
 @app.route('/check_blurry_images', methods=['POST'])
 def check_web_images():
     data = request.get_json()
@@ -257,10 +221,9 @@ def check_load_time():
     load_time = (end_time - start_time)
     return jsonify({"Page Load Time is:":load_time})
  
- 
-@app.route('/check_html_errors', methods=['POST'])
-def check_htnl_code_errors():
-    data = request.get_json()
-    html_code = data['code']
-    errors,warnings = validate_html_w3c(html_code)
-    return jsonify({"Errors": errors, "Warnings": warnings})
+# @app.route('/check_html_errors', methods=['POST'])
+# def check_htnl_code_errors():
+#     data = request.get_json()
+#     html_code = data['code']
+#     errors,warnings = validate_html_w3c(html_code)
+#     return jsonify({"Errors": errors, "Warnings": warnings})
