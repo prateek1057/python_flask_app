@@ -220,6 +220,9 @@ def check_load_time():
         end_time = time()
     load_time = (end_time - start_time)
     return jsonify({"Page Load Time is:":load_time})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0')
  
 # @app.route('/check_html_errors', methods=['POST'])
 # def check_htnl_code_errors():
