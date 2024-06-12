@@ -28,14 +28,24 @@ def get_links_from_website(html_code):
                 link_list.append((link['href'], link_text))
     return link_list
 
-def check_url_content(link_list):
+def check_url_content(link_list, url):
     No_Content_Links = []
     Invalid_Links = []
     Valid_Links=[]
+    response = {}
+    link_with_status={}
     for link in link_list:
         try:
-            response = requests.get(link[0])
-            link_with_status=(link[0],link[1],response.status_code)
+            if link[0].startswith("https://"):
+                response = requests.get(link[0])
+                response.raise_for_status()
+                link_with_status=(link[0],link[1],response.status_code)
+            else:
+                partial_url = get_partial_url(url)
+                full_link_url = f"{partial_url.rstrip('/')}/{link[0].lstrip('/')}"
+                response = requests.get(full_link_url)
+                response.raise_for_status()
+                link_with_status=(full_link_url,link[1],response.status_code)
             if response.status_code == 200:  
                 if not response.text:
                     No_Content_Links.append(link_with_status)
