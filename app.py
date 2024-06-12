@@ -7,6 +7,11 @@ import urllib.request
 from time import time
 import cv2
 import numpy as np
+import html5lib
+from html5lib.html5parser import HTMLParser, ParseError
+from html5lib.serializer import serialize
+from io import StringIO
+from io import BytesIO
 from collections import defaultdict
 # from textblob import TextBlob
 from spellchecker import SpellChecker
@@ -109,57 +114,61 @@ def get_image_src_links(html_code):
     
     return src_links
 
-def is_blurry(image_url, threshold=100):
-    def calculate_laplacian_variance(image):
-        return cv2.Laplacian(image, cv2.CV_64F).var()
-    
-    def resize_image(image, size=(500, 500)):
-        h, w = image.shape[:2]
-        if h > w:
-            new_h, new_w = size[0], int(size[0] * w / h)
-        else:
-            new_h, new_w = int(size[1] * h / w), size[1]
-        return cv2.resize(image, (new_w, new_h))
-    
+def is_blurry(image_url, threshold=100, screen_type="mobile"):
     try:
+        # Fetch the image from the URL
         response = requests.get(image_url)
-        response.raise_for_status()
-        
-        image_array = np.asarray(bytearray(response.content), dtype=np.uint8)
-        image = cv2.imdecode(image_array, cv2.IMREAD_GRAYSCALE)
-        
-        if image is None:
+        image_data = BytesIO(response.content)
+        img = cv2.imdecode(np.frombuffer(image_data.read(), np.uint8), cv2.IMREAD_COLOR)
+
+        # Determine resize dimensions based on screen type
+        if screen_type == "mobile":
+            new_size = (480, 640)  # You can adjust these dimensions as needed
+        elif screen_type == "desktop":
+            new_size = (1024, 768)  # You can adjust these dimensions as needed
+        else:
+            raise ValueError("Invalid screen_type. Use 'mobile' or 'desktop'.")
+        try:    
+        # Resize the image
+            resized_img = cv2.resize(img, new_size)
+            # Convert the resized image to grayscale
+            gray = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
+            # Calculate the Laplacian variance as a measure of blurriness
+            lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    
+            # Determine if the image is blurry based on the threshold
+            if lap_var < threshold:
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"Error processing image {image_url}")
             return False
-        
-        image = resize_image(image)
-        laplacian_var = calculate_laplacian_variance(image)
-        return laplacian_var < threshold
-    except requests.exceptions.RequestException:
+    except Exception as e:
+        print(f"Error processing image: {image_url}")
         return False
-
     
-def validate_html_w3c(html_code):
-    headers = {
-        "Content-Type": "text/html; charset=utf-8"
-    }
-    params = {
-        "out": "json"
-    }
-    response = requests.post("https://validator.w3.org/nu/?out=json", headers=headers, data=html_code, params=params)
-    validation_results = response.json()
+def collect_errors_and_warnings(errors, warnings, error):
+    if isinstance(error, ParseError):
+        errors.append(str(error))
+    else:
+        warnings.append(str(error))
 
-    messages = validation_results.get('messages', [])
-    errors=[]
-    warnings=[]
-    for message in messages:
-        message_type = message.get('type', 'error')  # Default to 'error' if type is not provided
-        if message_type == 'error':
-            errors.append((message["lastLine"],message['message']))
-            
-        elif message_type == 'info' and 'subtype' in message and message['subtype'] == 'warning':
-            warnings.append((message["lastLine"],message['message']))
+def validate_html_w3c(html):
+    '''Parse HTML with html5lib and log all errors and warnings.'''
+    errors = []
+    warnings = []
     
-    return errors,warnings
+    parser = HTMLParser(strict=True, tree=html5lib.treebuilders.getTreeBuilder("etree"))
+    try:
+        parsed_tree = parser.parse(StringIO(html))
+        corrected_html = serialize(parsed_tree)
+    except ParseError as e:
+        if "Specific Error Message" not in str(e):  # Skip specific error
+            errors.append(str(e))
+        corrected_html = None
+
+    return errors, warnings, corrected_html
 
 def get_partial_url(full_url):
     parsed_url = urlparse(full_url)
