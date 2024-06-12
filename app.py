@@ -7,8 +7,6 @@ import urllib.request
 from time import time
 import cv2
 import numpy as np
-import html5lib
-from html5lib.html5parser import HTMLParser, ParseError
 from io import StringIO
 from spellchecker import SpellChecker
 from urllib.parse import urlparse, urlunparse
@@ -222,7 +220,7 @@ def check_load_time():
     return jsonify({"Page Load Time is:":load_time})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run()
  
 # @app.route('/check_html_errors', methods=['POST'])
 # def check_htnl_code_errors():
